@@ -128,9 +128,19 @@ Then download a VOSK model:
 
 .. code-block:: sh
 
-   wget https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip
-   unzip vosk-model-small-en-us-0.15.zip
-   mv vosk-model-small-en-us-0.15 ~/.config/nerd-dictation/model
+   nerd-dictation download-model
+
+This presents an interactive list of available models. You can also specify a model directly:
+
+.. code-block:: sh
+
+   nerd-dictation download-model --model vosk-model-small-en-us-0.15
+
+Or list available models without downloading:
+
+.. code-block:: sh
+
+   nerd-dictation download-model --list
 
 To test dictation:
 
