@@ -42,6 +42,18 @@ USER_CONFIG = "nerd-dictation.py"
 
 SIMULATE_INPUT_CODE_COMMAND = -1
 
+# AIDEV-NOTE: maps external commands to human-readable descriptions for error messages
+SYSTEM_COMMAND_INFO: Dict[str, str] = {
+    "parec": "PulseAudio recorder, typically in the 'pulseaudio-utils' package",
+    "sox": "Sound exchange tool, typically in the 'sox' package",
+    "pw-cat": "PipeWire audio tool, typically in the 'pipewire' package",
+    "xdotool": "X11 input simulator, typically in the 'xdotool' package",
+    "ydotool": "Input simulator (X11/Wayland/TTY), typically in the 'ydotool' package",
+    "dotool": "Input simulator (X11/Wayland/TTY), see https://git.sr.ht/~geb/dotool",
+    "dotoolc": "Dotool daemon client, see https://git.sr.ht/~geb/dotool",
+    "wtype": "Wayland input simulator, typically in the 'wtype' package",
+}
+
 
 # -----------------------------------------------------------------------------
 # General Utilities
@@ -51,10 +63,12 @@ SIMULATE_INPUT_CODE_COMMAND = -1
 def run_command_or_exit_on_failure(cmd: List[str]) -> None:
     try:
         subprocess.check_output(cmd)
-    # Don't catch other kinds of exceptions as they should never happen
-    # and can be considered a severe error which doesn't need to be made "user friendly".
     except FileNotFoundError as ex:
-        sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
+        sys.stderr.write("Command {!r} not found.\n".format(cmd[0]))
+        info = SYSTEM_COMMAND_INFO.get(cmd[0])
+        if info:
+            sys.stderr.write("  {!r} is {}.\n".format(cmd[0], info))
+        sys.stderr.write("  Install it using your system package manager.\n")
         sys.exit(1)
 
 
@@ -232,7 +246,15 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str, cmd: str = "d
             # "text" was added as a more readable alias for
             # "universal_newlines" in Python 3.7 so use universal_newlines for
             # Python 3.6 compatibility:
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
+            try:
+                proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
+            except FileNotFoundError:
+                sys.stderr.write("Command {!r} not found.\n".format(cmd))
+                info = SYSTEM_COMMAND_INFO.get(cmd)
+                if info:
+                    sys.stderr.write("  {!r} is {}.\n".format(cmd, info))
+                sys.stderr.write("  Install it using your system package manager.\n")
+                sys.exit(1)
             assert proc.stdin is not None
             proc.stdin.write("keydelay 4\nkeyhold 0\ntypedelay 12\ntypehold 0\n")
             proc.stdin.flush()
@@ -918,7 +940,15 @@ def recording_proc_with_non_blocking_stdout(
         sys.stderr.write("--input %r not supported.\n" % input_method)
         sys.exit(1)
 
-    ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    try:
+        ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    except FileNotFoundError:
+        sys.stderr.write("Command {!r} not found.\n".format(cmd[0]))
+        info = SYSTEM_COMMAND_INFO.get(cmd[0])
+        if info:
+            sys.stderr.write("  {!r} is {}.\n".format(cmd[0], info))
+        sys.stderr.write("  Install it using your system package manager.\n")
+        sys.exit(1)
     stdout = ps.stdout
     assert stdout is not None
 
