@@ -76,6 +76,14 @@ Dependencies
 - An audio recording utility (``parec`` by default).
 - An input simulation utility (``xdotool`` by default).
 
+All external commands are validated at runtime with helpful error messages
+indicating which package to install. If a required command is missing you will
+see a message like::
+
+   Command 'parec' not found.
+   'parec' is PulseAudio recorder, typically in the 'pulseaudio-utils' package.
+   Install it using your system package manager.
+
 
 Audio Recording Utilities
 -------------------------
