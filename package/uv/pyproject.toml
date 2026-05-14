@@ -28,11 +28,8 @@ nerd-dictation = "nerd_dictation:main"
 [project.urls]
 Repository = "https://github.com/ideasman42/nerd-dictation"
 
-[tool.hatch.build.targets.wheel.force-include]
-"nerd-dictation" = "nerd_dictation/__init__.py"
-
-[tool.hatch.build.targets.sdist.force-include]
-"nerd-dictation" = "nerd-dictation"
+[tool.hatch.build.targets.wheel]
+packages = ["src/nerd_dictation"]
 
 [tool.black]
 line-length = 119
