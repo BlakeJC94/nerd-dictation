@@ -1222,58 +1222,64 @@ def text_from_vosk_pipe(
     if idle_time > 0.0:
         idle_time_prev = time.time()
 
-    while code == 0:
-        # -1=cancel, 0=continue, 1=finish.
-        code = exit_fn(handled_any)
+    # AIDEV-NOTE: KeyboardInterrupt is caught so Ctrl+C triggers cleanup instead of
+    # leaving orphaned recording processes or skipping TEARDOWN.
+    try:
+        while code == 0:
+            # -1=cancel, 0=continue, 1=finish.
+            code = exit_fn(handled_any)
 
-        # Note that when suspend is enabled the entire process is suspended
-        # and this look should not run.
-        # This check is simply done to prevent any logic running before the process is actually suspended,
-        # although in practice it doesn't look to be a problem.
-        if suspend:
-            continue
+            # Note that when suspend is enabled the entire process is suspended
+            # and this look should not run.
+            # This check is simply done to prevent any logic running before the process is actually suspended,
+            # although in practice it doesn't look to be a problem.
+            if suspend:
+                continue
 
-        if idle_time > 0.0:
-            # Subtract processing time from the previous loop.
-            # Skip idling in the event dictation can't keep up with the recording.
-            idle_time_curr = time.time()
-            idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
-            if idle_time_test > 0.0:
-                # Prevents excessive processor load.
-                time.sleep(idle_time_test)
-                idle_time_prev = time.time()
-            else:
-                idle_time_prev = idle_time_curr
+            if idle_time > 0.0:
+                # Subtract processing time from the previous loop.
+                # Skip idling in the event dictation can't keep up with the recording.
+                idle_time_curr = time.time()
+                idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
+                if idle_time_test > 0.0:
+                    # Prevents excessive processor load.
+                    time.sleep(idle_time_test)
+                    idle_time_prev = time.time()
+                else:
+                    idle_time_prev = idle_time_curr
 
-        # Mostly the data read is quite small (under 1k).
-        # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
-        try:
-            data = stdout.read(block_size)
-        except (NameError, ValueError):
-            # Start recording if `stdout` is not yet open (NameError), or if it
-            # was closed via suspend (ValueError).  This can happen either due
-            # to a suspend/resume cycle (SIGUSR1/SIGTSTP->SIGCONT) or when
-            # --suspend-on-start was specified followed by a SIGCONT.
-            do_suspend_resume()
-            continue
+            # Mostly the data read is quite small (under 1k).
+            # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
+            try:
+                data = stdout.read(block_size)
+            except (NameError, ValueError):
+                # Start recording if `stdout` is not yet open (NameError), or if it
+                # was closed via suspend (ValueError).  This can happen either due
+                # to a suspend/resume cycle (SIGUSR1/SIGTSTP->SIGCONT) or when
+                # --suspend-on-start was specified followed by a SIGCONT.
+                do_suspend_resume()
+                continue
 
-        if data:
-            ok = rec.AcceptWaveform(data)
-            if ok:
-                json_text_partial_prev = ""
-                json_text = rec_handle_fn_wrapper_from_final_result()
-            else:
-                json_text, json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
+            if data:
+                ok = rec.AcceptWaveform(data)
+                if ok:
+                    json_text_partial_prev = ""
+                    json_text = rec_handle_fn_wrapper_from_final_result()
+                else:
+                    json_text, json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
 
-            # Monitor the partial output.
-            # Finish if no changes are made for `timeout` seconds.
-            if use_timeout:
-                if json_text != timeout_text_prev:
-                    timeout_text_prev = json_text
-                    timeout_time_prev = time.time()
-                elif time.time() - timeout_time_prev > timeout:
-                    if code == 0:
-                        code = 1  # The time was exceeded, exit!
+                # Monitor the partial output.
+                # Finish if no changes are made for `timeout` seconds.
+                if use_timeout:
+                    if json_text != timeout_text_prev:
+                        timeout_text_prev = json_text
+                        timeout_time_prev = time.time()
+                    elif time.time() - timeout_time_prev > timeout:
+                        if code == 0:
+                            code = 1  # The time was exceeded, exit!
+
+    except KeyboardInterrupt:
+        code = -1
 
     # Close the recording process.
     if has_ps:
