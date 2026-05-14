@@ -31,6 +31,12 @@ Repository = "https://github.com/ideasman42/nerd-dictation"
 [tool.hatch.build.targets.wheel]
 packages = ["src/nerd_dictation"]
 
+[tool.hatch.build.targets.sdist]
+force-include = {"../../nerd-dictation" = "nerd-dictation"}
+include = ["pyproject.toml", "readme.rst", "hatch_build.py"]
+
+[tool.hatch.build.hooks.custom]
+
 [tool.black]
 line-length = 119
 target-version = ['py310']

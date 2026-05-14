@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-# AIDEV-NOTE: keep in sync with ../../nerd-dictation (the single-file script is the source of truth)
 
 """
 This is a utility that activates speech to text on Linux.
