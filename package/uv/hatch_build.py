@@ -1,23 +1,30 @@
+# Custom hatchling build hook that eliminates file duplication.
+#
+# The entire application lives in a single script at the repo root
+# (../../nerd-dictation).  Rather than track a copy inside this package
+# directory, this hook injects it into the wheel via build_data["force_include"],
+# mapping the script to nerd_dictation/__init__.py.
+#
+# Two source locations are handled:
+#   - Source tree:  ../../nerd-dictation  (relative to package/uv)
+#   - Sdist tree:    ./nerd-dictation       (force-include places it at root)
+
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 import os
-import shutil
 
 
 class CustomBuildHook(BuildHookInterface):
     PLUGIN_NAME = "sync_source"
 
     def initialize(self, version, build_data):
+        # When building from the source tree, the script is two dirs up.
         src = os.path.normpath(os.path.join(self.root, "..", "..", "nerd-dictation"))
-        dst_dir = os.path.join(self.root, "src", "nerd_dictation")
-        dst = os.path.join(dst_dir, "__init__.py")
 
+        # When building from an sdist, force-include already placed it at root.
         if not os.path.exists(src):
-            # AIDEV-NOTE: when building from sdist, the file is already in place
-            # because sdist force-include maps it to the project root
             alt = os.path.join(self.root, "nerd-dictation")
             if os.path.exists(alt):
                 src = alt
 
         if os.path.exists(src):
-            os.makedirs(dst_dir, exist_ok=True)
-            shutil.copy2(src, dst)
+            build_data["force_include"][src] = "nerd_dictation/__init__.py"
